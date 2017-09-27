@@ -1,0 +1,231 @@
+@import 'var/var';
+@import 'font/font';
+
+body {
+	font-size: $base-font-size;
+}
+
+@include header-reset;
+
+body {
+	font-family: $pancetta;
+}
+
+	//Legend styles
+	.legend {
+			position: fixed !important;
+			top: 50px;
+			bottom: 0;
+			width: 30%;
+			background-color: #f8f8f8;
+			overflow-x: hidden;
+			overflow-y: auto;
+			margin-bottom: 0px;
+		}
+	div.form-group {
+				font-size: 16px;
+			}
+
+	input.form-control {
+				font-size: 15px;
+			}
+
+	.form-header p {
+				margin-bottom: 4px;
+				margin-top: 12px;
+				text-align: center;
+			}
+
+	.form-control {
+			background-color: rgba(0,0,0,0.6);
+			border: 0;
+			color: #fff;
+			border-radius: 6px;
+			height: 35px;
+		}
+
+		.form-horizontal .control-label {
+			font-weight: normal;
+			text-align: left;
+		}
+
+		.form-horizontal .checkbox {
+			padding-top: 0;
+		}
+
+		.checkbox {
+			margin-top: 0px;
+			margin-bottom: 0px;
+			border: 1px solid rgba(0,0,0,0);
+			&:hover {
+				border: 1px solid rgba(0, 240, 240, 0.5);
+				border-left-color: rgba(0,0,0,0);
+				border-right-color: rgba(0,0,0,0);
+				background-color: rgba(0, 240, 240, 0.1);
+			}
+		}
+		
+		.form-control {
+		    height: 30px;
+		}
+		.form-group {
+		    margin-bottom: 0;
+		}
+
+		label.col-lg-8, div.checkbox.col-lg-8 {
+			padding: 3px 1px;
+		}
+
+		div.form-group .col-lg-2 {
+			padding: 0 2px;
+		}
+
+	//Navbar styles
+	.header {
+		display: flex;
+	    align-items: center;
+	    padding-left: 15px;
+
+	    embed {
+	    	width: 26px;
+	    }
+
+	    .navbar-brand {
+		    padding: 15px 10px;
+		}
+	}
+	.navbar-brand {
+	    font-size: 18px;
+	}
+
+	input[type="file"] {
+		    color: #fff;
+		    margin-top: 11px;
+		    font-size: 14px;
+		}
+	.navbar {
+		    margin-bottom: 0px;
+		    border-width: 0px;
+		    border-radius: 0px;
+		}
+
+		.navbar > .container .navbar-brand, .navbar > .container-fluid .navbar-brand {
+		    margin-left: 0px;
+		}
+
+		.navbar-default .navbar-brand {
+		    color: #fff;
+		}
+
+		.navbar-default .navbar-brand:focus, .navbar-default .navbar-brand:hover {
+		    color: rgb(200,200,200);
+		    background-color: transparent;
+		}
+
+		.navbar-default {
+		    background-color: rgba(0,0,0,0.65);
+		}
+		//open file style
+		.btn-file {
+			margin-top: 8px;
+			padding: 6px 16px;
+			margin-right: 42px;
+		}
+
+	//SVG Styles
+		.axis path, .axis line {
+		    fill: none;
+		    stroke: #000;
+		    shape-rendering: crispEdges;
+		    opacity: .4;
+		}
+		.axis text {
+		    font: 10px sans-serif;
+		}
+		.axis.x0 text {
+		    display: none;
+		}
+		text.dots {
+			shape-rendering: crispEdges;
+			font-size: 10px;
+		}
+		path {
+		    fill: none;    
+		    stroke-width: 2;
+		}
+		.axis .tick line {
+			opacity: 0.2;
+		}
+		.tipLine {
+			stroke: lightgrey;
+			opacity: 0;
+			stroke-width: 3;
+			shape-rendering: crispEdges;
+		}
+		.tipLine:hover {
+			opacity: 0.6;
+			stroke: #000;
+			stroke-width: 2;
+			shape-rendering: crispEdges;
+		}
+		.tipLine:active {
+			stroke-width: 2px;
+		}
+
+		#tooltip {
+			position: absolute;
+			top: 0;
+			left: 0;
+			z-index: 10;
+			margin: 0;
+			padding: 10px 15px;
+			color: #000;
+			font-family: sans-serif;
+			font-size: 14px;
+			text-align: left;
+			background-color: rgba(255, 255, 255, 0.95); 
+			opacity: 0;
+			border-radius: 10px;
+			pointer-events: none;
+			width: 300px;
+		}
+
+	//Table styles
+		#sheet {
+			margin: 0 28px;
+			margin-top: 10px;
+		}
+		th, td {
+			text-align: center;
+		}
+		.table-bordered th,
+		.table-bordered td {
+			font-size: 16px;
+		    border: 1px solid #ddd !important;
+		    padding: 5px;
+		}
+		.table-bordered th {
+			background-color: rgba(0,0,0,0.65);
+			color: white;
+			font-weight: normal;
+			font-size: 16px;
+		}
+		tr.data:hover {
+			background-color: rgb(240, 240, 240);
+		}
+		tr.data:active {
+			background-color: rgb(220, 220, 220);
+		}
+
+		//Layout styles
+		.container-fluid {
+			margin-left: -15px;
+		}
+
+		.col-xs-push-3 {
+		    left: 30%;
+		}
+
+		.chart {
+			width: 70%;
+		}

@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GeoScape Navigator</title>
+    <link href="css/global.css" rel="stylesheet">
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.js"></script>
+      <script src="js/respond.min.js"></script>
+    <![endif]-->
+    <style>
+      @media print {
+        #tooltip {
+          display: none;
+        }
+        .form-group {
+          display: none;
+        }
+      }
+      .form-group-active > .col-lg-2 {
+        padding-right: 2px;
+        padding-left: 2px;
+      }
+    </style>
+  </head>
+  <body>
+
+	<nav class="navbar navbar-default">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <button class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="header">
+            <embed src="img/logo.svg"></embed>
+            <a href="index.html" class="navbar-brand">GEOSCAPE NAVIGATOR</a>
+          </div>
+        </div>
+        <div class="collapse navbar-collapse" id="myNavbar">
+          <ul class="nav navbar-nav">
+            <li><a href=""></a></li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+                <input type="file" id="file-input" />
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+    	<div class="legend col-xs-3">
+    		
+    	</div>
+    	<div class="chart col-xs-9 col-xs-push-3">
+    		<div id="mainSVG"></div>
+    		<div id="sheet"></div>
+    		<div id="brush"></div>
+    	</div>
+    </div>
+
+  	<div id="tooltip"></div>
+
+    
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="js/jquery-3.1.1.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="js/bootstrap.min.js"></script>
+    <!-- D3 library -->
+    <script src="js/d3.v3.min.js" type="text/JavaScript"></script>
+    <!-- Colorbrewer library -->
+    <script src="js/colorbrewer.js" type="text/JavaScript"></script>
+    <!-- Color presets -->
+    <script src="data/colorpresets.js" type="text/JavaScript"></script>
+  </body>
+  <footer>
+  	<script>
+
+
+    //Define variables
+    var chart = {},
+      width,
+      height = 500,
+      heightBrush = 250,
+      margin = {
+        top: 30,
+        bottom: 30,
+        left: 30,
+        right: 30
+      },
+      svg,
+      bodyG,
+      bodyGBrush,
+      yScale,yAxis,
+      brush,
+      file, //CSV file name//
+      colors = d3.scale.category20();
+
+    var legend = {};
+    var geoData = [];
+    var legendKeys = [];
+    
+    var format = d3.time.format("%d.%m.%y %H:%M:%S");
+
+    var csvFile;
+
+
+
+  //Open CSV file
+
+  document.getElementById('file-input').addEventListener('change', checkFile, false);
+  
+    //Open new file function
+    function checkFile(e) {
+
+        if(file) {
+            //Remove SVG and legend from previous file
+           file = "";
+           legend = "";
+           d3.select('form').remove()
+           d3.selectAll('svg').remove()
+           d3.select('table#table').remove();
+           d3.select('#tooltip').remove();
+           d3.select('body').append('div').attr('id', 'tooltip');
+           readFile(e);
+
+        } else {
+            csvFile = e;
+            readFile(e);
+        }
+
+      }
+
+  
+   function readFile(e) {
+
+    width = +d3.select('div#mainSVG').node().clientWidth,
+
+    file = "files/" + e.target.files[0].name;
+
+    //Parse legend object
+    d3.json("data/legend.json",function(error,legendData) {
+      legend = legendData;
+      //Parse the geoscape data
+      d3.csv(file,function(error,data) {renderData(data)});
+    });
+
+
+    function renderData(csvData) {
+      
+      //Filter the data to less the size of the array (option)
+      var filterData = csvData.filter(function(d) {
+        return d.S0 < 42683;
+      })
+     
+      //Parse all dates from Excel format to javaScript
+      csvData.forEach(function(d) {
+        
+        var csvDate = d.S0;
+
+        d.S0 = new Date((csvDate - (25567 + 1))*86400*1000);
+
+      })
+
+      geoData.push(csvData);
+
+      //Extract the names of columns
+      var dataKeys = d3.keys(csvData[0]);
+
+      //Create object keys with legend
+      var inputKeys = [];
+
+      for (var i = 0; i < dataKeys.length; i++) {
+
+        var obj = {
+          key: dataKeys[i],
+          legend: legend[dataKeys[i]]
+        }
+        
+        inputKeys.push(obj)      
+      }
+
+      //Filter inputKeys with undefined
+      filInputKeys = inputKeys.filter(function(d) {
+        if(d.legend && d.legend != 'Дата / время') {return d};
+      })
+
+     //Render checkboxes
+     checkedBox(filInputKeys);
+
+     //Render SVG
+     renderSvg();
+
+     renderDepthLine();
+
+     createBrush();
+
+    }
+
+  }
+
+    //Render checkBox with parametrs
+    function checkedBox(data) {
+      var formgroup = d3.select('div.legend').append('form').attr('name','test').selectAll('div.form-group').data(data);
+
+          //Append header
+          var divHeader = d3.select('[name = test]').append('div').classed('form-header',true);
+
+          divHeader.append('div').classed('col-lg-8',true).append('p').html('ПАРАМЕТРЫ');
+          divHeader.append('div').classed('col-lg-2',true).append('p').html('MIN');
+          divHeader.append('div').classed('col-lg-2',true).append('p').html('MAX');
+
+          //Enter data
+          formgroup.enter()
+            .append('div')
+            .classed('form-group', true)
+
+          var checkbox = formgroup.append('div').attr('class','checkbox col-lg-8');
+
+          //Update data
+          checkbox
+            .append('label')
+            .html(function(d) {return "<input name="+"trigger"+" "+"type="+"checkbox"+" "+"value="+d.key+">" + d.legend;})
+
+          //Append input number
+          //Min value
+          formgroup.append('div').classed('col-lg-2',true)
+            .html(function(d) {return "<input step=1 min=0 class=form-control name=min-"+d.key+" "+"type="+"number"+" disabled "+"value=>"});
+
+          //Max value
+          formgroup.append('div').classed('col-lg-2',true)
+            .html(function(d) {return "<input min=0 class=form-control name=max-"+d.key+" "+"type="+"number"+" disabled "+"value= >"});
+
+        //Create checkbox trigger
+         d3.selectAll('input[type="checkbox"]')
+           .on('click', function() {
+              if(this.checked) {
+                updInputBox(this.value);
+                brushed();
+              } else {
+                d3.selectAll("path.line-"+this.value).remove();
+                updInputBox(this.value);
+                brushed();
+              }
+            
+           })
+
+    }
+
+    //Find the min and max parametr
+    function exVal(param) {
+
+        var localArray = [];
+
+        geoData.forEach(function(d) {
+          d.forEach(function(j) {
+            localArray.push(j[param]);
+          })
+        })
+
+        sortLocalArray = localArray.sort(function(a,b) {return a-b});
+
+        var minValue = sortLocalArray[0];
+        var maxValue = sortLocalArray[sortLocalArray.length-1];
+        var extentValue = [minValue, maxValue];
+
+        return extentValue;
+    }
+
+    //Find the min parametr
+    function minVal(param, filterData) {
+
+        var localArray = [];
+
+
+        if(!filterData) {
+
+          geoData.forEach(function(d) {
+            d.forEach(function(j) {
+              localArray.push(j[param]);
+            })
+          })
+          
+        } else {
+
+          filterData.forEach(function(d) {
+              localArray.push(d[param]);
+          })
+        }
+
+
+        sortLocalArray = localArray.sort(function(a,b) {return a-b});
+
+        var minValue = sortLocalArray[0];
+        var maxValue = sortLocalArray[sortLocalArray.length-1];
+        var extentValue = [minValue, maxValue];
+
+        return minValue;
+    }
+
+    //Find the max parametr
+    function maxVal(param,filterData) {
+
+        var localArray = [];
+
+        if(!filterData) {
+
+          geoData.forEach(function(d) {
+            d.forEach(function(j) {
+              localArray.push(j[param]);
+            })
+          })
+          
+        } else {
+
+          filterData.forEach(function(d) {
+              localArray.push(d[param]);
+          })
+        }
+
+        sortLocalArray = localArray.sort(function(a,b) {return a-b});
+
+        var minValue = sortLocalArray[0];
+        var maxValue = sortLocalArray[sortLocalArray.length-1];
+        var extentValue = [minValue, maxValue];
+
+        return maxValue;
+    }
+
+  //APPEND SVG, AXIS, CLIPPATH
+    function renderSvg() {
+        
+        svg = d3.select('div#mainSVG')
+            .append('svg')
+            .attr('width',width)
+            .attr('height',height);
+
+        svgBrush = d3.select('div#brush')
+            .append('svg')
+            .attr('width',width)
+            .attr('height',heightBrush);
+        
+        //Render Axis
+          
+          //Create X,Y scales
+          xScale = d3.time.scale()
+                .domain(exVal("S0"))
+                .range([0,width-margin.left-margin.right]);
+
+          yScale = d3.scale.linear()
+                /**/
+                .range([height-margin.top-margin.bottom,0]);
+
+          x0Scale = d3.time.scale()
+                .domain(exVal("S0"))
+                .range([0,width-margin.left-margin.right]);
+
+          //Create X,Y Brush scales
+          xScaleBrush = d3.time.scale()
+                .domain(exVal("S0"))
+                .range([0,width-margin.left-margin.right]);
+
+          yScaleBrush = d3.scale.linear()
+                /**/
+                .range([heightBrush-margin.top-margin.bottom,0]);
+
+          x0ScaleBrush = d3.time.scale()
+                .domain(exVal("S0"))
+                .range([0,width-margin.left-margin.right]);
+
+          //Create X,Y axis
+          xAxis = d3.svg.axis()
+                .orient('bottom')
+                .scale(xScale)
+                .ticks(6)
+                // .tickPadding(10)
+                .tickFormat(function(d) {
+                  var format = d3.time.format("%d.%m.%y %H:%M");
+                  return format(d);
+                })
+
+          x0Axis = d3.svg.axis()
+                .orient('top')
+                .scale(x0Scale)
+                .ticks(16)
+                .tickSize(-(height-margin.top-margin.bottom));
+
+          //Create X Brush axis
+          xAxisBrush = d3.svg.axis()
+                .orient('bottom')
+                .scale(xScaleBrush)
+                .ticks(6)
+                // .tickPadding(10)
+                .tickFormat(function(d) {
+                  var format = d3.time.format("%d.%m.%y %H:%M");
+                  return format(d);
+                })
+
+          x0AxisBrush = d3.svg.axis()
+                .orient('top')
+                .scale(x0ScaleBrush)
+                .ticks(16)
+                .tickSize(-(heightBrush-margin.top-margin.bottom));
+
+          //Append group for axis
+          axisG = svg.append('g')
+                .attr('class', 'axis');
+
+          //for brush
+          axisGBrush = svgBrush.append('g')
+                .attr('class', 'axis');
+
+          //Append X,Y axis
+          axisG.append('g')
+              .attr('class','axis x')
+              .attr('transform', function() {
+                return 'translate('+ margin.left+','+(height-margin.bottom)+')';
+              })
+              .call(xAxis);
+
+          axisG.append('g')
+              .attr('class','axis x0')
+              .attr('transform', function() {
+                return 'translate('+ margin.left+','+ margin.top +')';
+              })
+              .call(x0Axis);
+
+           //Append X,Y Brush axis
+          axisGBrush.append('g')
+              .attr('class','axis x')
+              .attr('transform', function() {
+                return 'translate('+ margin.left+','+(heightBrush-margin.bottom)+')';
+              })
+              .call(xAxisBrush);
+
+          axisGBrush.append('g')
+              .attr('class','axis x0')
+              .attr('transform', function() {
+                return 'translate('+ margin.left+','+ margin.top +')';
+              })
+              .call(x0AxisBrush);
+
+        //Define body clip
+        svg.append('defs')
+          .append('clipPath')
+          .attr('id','body-clip')
+          .append('rect')
+          .attr('x','0')
+          .attr('y','0')
+          .attr('width',width-margin.right-margin.left)
+          .attr('height',height-margin.top-margin.bottom);
+
+         //for brush
+         svgBrush.append('defs')
+          .append('clipPath')
+          .attr('id','body-clip-brush')
+          .append('rect')
+          .attr('x','0')
+          .attr('y','0')
+          .attr('width',width-margin.right-margin.left)
+          .attr('height',heightBrush-margin.top-margin.bottom);
+
+         //Render body with clippath
+          bodyG = svg.append('g')
+              .attr('class','bodyG')
+              .attr('transform','translate('+margin.left+','+margin.top+')')
+              .attr('clip-path','url(#body-clip)');
+
+           //for brush
+           bodyGBrush = svgBrush.append('g')
+              .attr('class','bodyG')
+              .attr('transform','translate('+margin.left+','+margin.top+')')
+              .attr('clip-path','url(#body-clip-brush)');
+
+    }
+
+    //Render vertical tooltip line
+    function renderTipsLine(filterData) {
+      
+      d3.selectAll('line.tipLine').remove();
+
+      tipsG = bodyG.append('g')
+              .attr('class','tipsG');
+
+
+        tipLines = tipsG.selectAll('line.tipLine').data(filterData);
+              
+              //Enter
+              tipLines.enter()
+                .append('line')
+                .classed('tipLine', true);
+
+              //Update
+              tipLines
+                .attr('x1', function(d) {return xScale(d.S0)})
+                .attr('y1', height-margin.bottom-margin.top)
+                .attr('x2', function(d) {return xScale(d.S0)})
+                .attr('y2', '0')
+                .style('fill','none')
+                .on("mouseover", function(d) {
+
+                    //Define variables
+                    var svgW =  +d3.select('div#mainSVG').node().clientWidth;
+                    var tooltipW = +d3.select('div#tooltip').node().clientWidth;
+                    var mouseX = d3.mouse(this)[0];
+
+              //Position the tooltip <div> and set its content
+              var x;
+
+              if(svgW - (tooltipW+mouseX+margin.right) > 0) {
+                x = d3.event.pageX + 15;
+              } else {
+                x = d3.event.pageX - tooltipW - 15;
+              }
+
+              var y = d3.event.pageY;
+
+              d3.select("#tooltip")
+                .style("left", x + "px")
+                .style("top", y + "px")
+                .style("opacity", 1)
+                .html(function() {
+                  return tooltipBar(d);               
+                      })
+          })
+          .on("mouseout", function() {
+
+              //Hide the tooltip
+              d3.select("#tooltip")
+                .style("opacity", 0);
+
+          })
+          .on('click', function(d) {
+            
+            d3.selectAll('tr.data')[0].forEach(function(f) {
+              f.style = 'background-color: none';
+            });
+
+            var obj = d3.selectAll('td')[0].forEach(function(j) {
+                format = d3.time.format("%d.%m.%y %H:%M:%S");
+                if (j.textContent == format(d.S0)) {
+                  j.parentNode.style = 'background-color: rgb(240,240,240)';
+                };
+              });
+            
+          })
+
+          function tooltipBar(obj) {
+            format = d3.time.format("%d.%m.%y %H:%M:%S");
+
+            checkedParam = findCheckedParam();
+
+            var text = "<p>" + "Дата/время: " + format(obj.S0) + "</p>";
+
+            //return the parametr with specified decimals
+            function fixedDecimal(i) {
+              var p = +obj[checkedParam[i]];
+              return p.toFixed(1);
+
+            }
+
+            for (var i = 0; i < checkedParam.length; i++) {
+              text += "<p style=\"color:"+ colorPresets[checkedParam[i]].color +"\">" + legend[checkedParam[i]] + ": " 
+              + "<b>" + fixedDecimal(i) + "</b>" + "</p>";
+            }
+
+                  return text;
+          }
+    }
+
+    //FIND THE CHECKED PARAMETRS
+    function findCheckedParam() {
+        var checkedParam = [];
+
+      for (var i = 0; i < document.test.trigger.length; i++) {
+        if (document.test.trigger[i].checked) {
+            checkedParam.push(document.test.trigger[i].value);
+        }
+      }
+
+      return checkedParam;
+    }
+
+
+    //RENDER CHART LINES
+    function renderChart(param,y1,y2,x1,x2) {
+
+        //Render Lines
+        var line = d3.svg.line() 
+                          .x(function (d) { return xScale(d.value.S0); })
+                          .y(function (d) { return yScale(d.value[param]); })
+                          .interpolate("linear");
+
+            // Define Y-Scale
+            yScale.domain([y1,y2]);
+
+            // Define X-Scale
+            xScale.domain([x1,x2]);
+
+            var selection = bodyG.selectAll("path.line-"+param).data(geoData);
+                          
+              //Enter
+              selection.enter() 
+                      .append("path")                
+                      .attr("class", "line-"+param);
+
+              //Update
+              selection
+                      .style("stroke", function () {
+                          if(colorPresets[param]) {
+                            return colorPresets[param].color;
+                          } else {return "steelblue";}
+                      })
+                      //TRANSITION!!!(option)
+                      /*.attr("d", function (d) {
+
+                        var array = [];
+                          
+                        for (var i = 0; i < d.length; i++) {
+                          
+                          var obj = {
+                            "value": {
+                              "S0": d[i].S0,
+                              [param]: "0"
+                            }
+                          }
+                          
+                          array.push(obj)
+                        }
+                        
+                        return line(array)}
+                      )
+                      .transition()
+                      .duration(1000)*/
+                      .attr("d", function (d) {
+                        return line(d3.entries(d)); });
+
+
+    }
+
+    //Render brush chart
+    function renderBrushChart(param,y1,y2) {
+
+        //for brush
+        var lineBrush = d3.svg.line() 
+                          .x(function (d) { return xScaleBrush(d.value.S0); })
+                          .y(function (d) { return yScaleBrush(d.value[param]); })
+                          .interpolate("linear");
+
+
+            // Define Y-Scale
+            if (y1 == undefined && y2 == undefined) {
+              //for brush
+              yScaleBrush.domain(exVal(param));
+            } else {
+              //for brush
+              yScaleBrush.domain([y1,y2]);
+            }
+
+              //FOR BRUSH
+              var brush = bodyGBrush.selectAll("path.line-"+param).data(geoData);
+                          
+              //Enter
+              brush.enter() 
+                      .append("path")                
+                      .attr("class", "line-"+param);
+
+              //Update
+              brush
+                      .style("stroke", function () {
+                          if(colorPresets[param]) {
+                            return colorPresets[param].color;
+                          } else {return "steelblue";}
+                      })
+                      .attr("d", function (d) {
+                        return lineBrush(d3.entries(d)); });
+
+    }
+
+
+    //Update inputBax min and max values
+    function updInputBox(param) {
+      
+      //RENDER MIN AND MAX VALUE IN THE FORM
+        //Get dom input elements
+        var min = document.test['min-'+param];
+        var max = document.test['max-'+param];
+
+          if(min.disabled) {
+
+          min.value = (+minVal(param)).toFixed(1);
+            max.value = (+maxVal(param)).toFixed(1);
+            min.disabled = false;
+            max.disabled = false;
+            
+            //change class for print display
+            min.parentNode.parentNode.className = "form-group-active";
+
+        } else {
+
+            min.value = "";
+            max.value = "";
+            min.disabled = true;
+            max.disabled = true;
+
+            //change class for print display
+            min.parentNode.parentNode.className = "form-group";
+
+        }
+
+    //Default parametrs
+      var y1 = min.value;
+      var y2 = max.value;
+
+      //Define user input and render the chart and brushChart
+      min.addEventListener('change', function() {
+        y1 = this.value;
+        brushed();
+        renderBrushChart(param,y1,y2)
+      });
+
+      max.addEventListener('change', function() {
+        y2 = this.value;
+        brushed();
+        renderBrushChart(param,y1,y2)
+      });
+
+    } 
+
+    //RENDER DEPTH DOTS
+    function renderDepthLine() {
+
+            var filter = [];
+            geoData[0].forEach(function(d,i) {
+
+              var first = 0;
+              var last = geoData[0].length-1;
+              var middle = parseInt((geoData[0].length-1) / 2)
+              var q1 = first + parseInt((geoData[0].length-1) / 4)
+              var q2 = first + parseInt(((geoData[0].length-1) / 4)*1.4)
+              var q3 = first + parseInt(((geoData[0].length-1) / 4)*1.6)
+              var q4 = first + parseInt(((geoData[0].length-1) / 4)*1.8)
+              var q5 = first + parseInt(((geoData[0].length-1) / 4)*2.2)
+              var q6 = first + parseInt(((geoData[0].length-1) / 4)*2.4)
+              var q7 = first + parseInt(((geoData[0].length-1) / 4)*2.6)
+              var q8 = first + parseInt(((geoData[0].length-1) / 4)*2)
+              var q9 = first + parseInt(((geoData[0].length-1) / 4)*3)
+              var q10 = first + parseInt(((geoData[0].length-1) / 4)*3.2)
+              var q11 = first + parseInt(((geoData[0].length-1) / 4)*3.4)
+              var q12 = first + parseInt(((geoData[0].length-1) / 4)*3)
+              var q13 = first + parseInt(((geoData[0].length-1) / 4)*3.8)
+              var q14 = first + parseInt(((geoData[0].length-1) / 4)*0.6)
+              var q15 = first + parseInt(((geoData[0].length-1) / 4)*0.2)
+
+              if(i == first || i == last || i == middle || i == q1 || i == q2 || i == q3 || i == q4 || i == q5 || i == q6 || i == q7 || i == q8 || i == q9 || i == q10 || i == q11 || i == q12 || i == q13 || i == q14 || i == q15)  {
+                filter.push(d);
+              };
+
+            })
+
+            var selectDots = svgBrush.selectAll('circle.dots').data(filter);
+
+            //Enter
+              selectDots.enter()
+                  .append('circle')
+                  .attr('class','dots');
+
+              //Update
+              selectDots
+                  .attr('cx', function(d) {
+                    return margin.left+xScale(d.S0);
+                  })
+                  .attr('cy', function() {
+                    return margin.top;
+                  })
+                  .style('fill','white')
+                  .style('stroke','black')
+                  .attr('r',2)
+
+            var selectText = bodyG.selectAll('text.dots').data(filter);
+
+            //Enter
+              selectDots.enter()
+                  .append('text')
+                  .attr('class','dots');
+
+              //Update
+              selectDots
+                  .attr('x', function(d) {
+                    return margin.left+xScale(d.S0);
+                  })
+                  .attr('y', function() {
+                    return margin.top - 10;
+                  })
+                  .style("text-anchor", "middle")
+                    .text(function(d) {
+                      return d.S101;
+                    });
+  }
+
+  //Render table
+  function crtTable(filterData) {
+    
+    var checkedParam = findCheckedParam();
+
+    d3.select('table#table').remove();
+    
+    if(checkedParam.length > 0) {
+      checkedParam.unshift('S0');
+      appendTbl();
+    }
+
+    //Append table
+    function appendTbl() {
+
+      var table = d3.select('div#sheet')
+                      .append('table')
+                      .attr('id', 'table')
+                      .classed('table table-bordered', true);
+
+          //Append table header
+          table.append('tr').classed('head', true).selectAll('th').data(checkedParam)
+              .enter()
+              .append('th')
+              .html(function (d) {
+                return legend[d];
+              });
+
+          //Append min and max values
+            //Append rows
+            var minRow = table.insert('tr').classed('min', true);
+            var maxRow = table.insert('tr').classed('max', true);
+
+            //Find min and max values
+            var minValuesArray = [];
+            var maxValuesArray = [];
+
+            for (var i = 0; i < checkedParam.length; i++) {
+
+              if(i==0) {
+                minValuesArray.push(format(minVal(checkedParam[i],filterData)));
+                maxValuesArray.push(format(maxVal(checkedParam[i],filterData)));
+              } else {
+
+                var x = +minVal(checkedParam[i],filterData);
+                var y = +maxVal(checkedParam[i],filterData);
+
+                minValuesArray.push(x.toFixed(1));
+                maxValuesArray.push(y.toFixed(1));
+
+              }
+            }
+
+            //Append min data
+            var minTd = minRow.selectAll('td.min').data(minValuesArray)
+              .enter()
+              .append('td')
+              .classed('min',true)
+
+            minTd
+              .html(function(d) {return 'Min: ' + d})
+              .style('color', function(d,i) {
+                  var x = checkedParam[i];
+                  return colorPresets[x].color;
+                })
+                
+
+            //Append ax data
+            var maxTd = maxRow.selectAll('td.max').data(maxValuesArray)
+              .enter()
+              .append('td')
+              .classed('max',true)
+
+            maxTd
+              .html(function(d) {return 'Max: ' + d})
+              .style('color', function(d,i) {
+                  var x = checkedParam[i];
+                  return colorPresets[x].color;
+                })
+                
+
+      //     //Append rows with data
+      //     var rows = table.selectAll('tr.data').data(geoData[0])
+      //         .enter()
+      //         .append('tr')
+      //         .classed('data', true)
+      //         .on('click', function(d) {
+            
+          //  d3.selectAll('tr.data')[0].forEach(function(f) {
+          //    f.style = 'background-color: none';
+          //  });
+
+      //            this.style = 'background-color: rgb(240,240,240)';
+
+          //  var obj = d3.selectAll('.tipLine')[0].forEach(function(j) {
+
+          //      j.style = "";
+
+          //      format = d3.time.format("%d.%m.%y %H:%M:%S");
+          //      var jDate = j.__data__.S0;
+
+          //      if (d.S0 == j.__data__.S0) {
+          //        j.style = 'opacity: 1; stroke: red; stroke-width: 1px';
+          //        console.log(j.style);
+          //      };
+          //    });
+            
+          // })
+
+
+      //     //Append data
+      //     rows.selectAll('td').data(function(d) {return d3.entries(d).filter(function(d) {
+      //      for (var i = 0; i < checkedParam.length; i++) {
+      //            if (d.key == checkedParam[i]) {
+      //              return d.value;
+      //            }
+      //          }
+      //     })})
+      //         .enter()
+      //         .append('td')
+              
+      //         .html(function (d) {
+      //        if (d.key == "S0") {
+      //          var format = d3.time.format("%d.%m.%y %H:%M:%S");
+      //          return d.value = format(d.value);
+      //        } else {
+      //          var x = +d.value
+      //              return d.value = x.toFixed(1);
+      //        }
+
+      //         })
+
+      //         .style('color', function(d) {
+      //          var x = d.key;
+      //          return colorPresets[x].color;
+      //         });
+
+
+
+    }
+
+  }
+
+  //Create brush
+  function createBrush() {
+    
+    brush = d3.svg.brush()
+          .x(xScaleBrush)
+          .extent(exVal("S0"))
+          .on("brush", brushed);
+
+    /*var zoom =  d3.behavior.zoom()
+            .scaleExtent([1, 10])
+            .on("zoom", zoomed);
+
+    var focus = bodyG.append("rect")
+        .attr("class", "zoom")
+        .attr("width", width - margin.left - margin.right)
+          .attr("height", height - margin.top - margin.bottom)
+          .call(zoom);
+
+          bodyG.call(zoom);*/
+
+
+
+    var context = bodyGBrush.append("g")
+        .attr("class", "context")
+        .call(brush)
+        .selectAll("rect")
+        .attr("height", 250)
+        .style('fill','rgba(0,240,240,0.15)');
+
+    }
+
+    function brushed() {
+
+      var e = brush.extent();
+          var cheParamArray = findCheckedParam();
+
+          //time range
+          for (var i = 0; i < cheParamArray.length; i++) {
+          
+            var x1 = e[0];
+            var x2 = e[1];
+
+            var y1 = document.test['min-'+cheParamArray[i]].value;
+          var y2 = document.test['max-'+cheParamArray[i]].value;
+            
+            renderChart(cheParamArray[i],y1,y2,x1,x2);
+            renderBrushChart(cheParamArray[i],y1,y2);
+
+          }
+
+          //Redraw x-axis
+          xScale.domain(e);
+          d3.select('g.x').call(xAxis);
+
+          //Redraw x-axis
+          x0Scale.domain(e);
+          d3.select('g.x0').call(x0Axis);
+
+
+          //Filter the data
+        var filterData = geoData[0].filter(function(d) {
+            return d.S0 >= e[0] && d.S0 <= e[1];
+        })
+
+
+          renderTipsLine(filterData);
+
+          crtTable(filterData);
+          
+
+    };
+
+    function zoomed() {
+      // console.log(d3.event.translate)
+    }
+
+  
+  //responsive SVG size
+    window.onresize = function(event) {
+          if(file) {
+              width = +d3.select('div#mainSVG').node().clientWidth,
+              d3.selectAll('svg').remove()
+              d3.select('table#table').remove();
+              d3.select('#tooltip').remove();
+              d3.select('body').append('div').attr('id', 'tooltip');
+              renderSvg();
+              renderDepthLine();
+              createBrush();
+              brushed();
+          }
+    }
+
+  </script>
+  </footer>
+</html>

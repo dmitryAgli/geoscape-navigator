@@ -1,0 +1,16 @@
+@font-face {
+	font-family: 'PancettaPro';
+	src: url('../fonts/PancettaPro-Regular-webfont.eot');
+	src: url('../fonts/PancettaPro-Regular-webfont.eot?#iefix') format('embeddedopentype'),
+	url('../fonts/PancettaPro-Regular-webfont.woff2') format('woff2'),
+	url('../fonts/PancettaPro-Regular-webfont.woff') format('woff'),
+	url('../fonts/PancettaPro-Regular-webfont.ttf') format('truetype'),
+	url('../fonts/PancettaPro-Regular-webfont.svg') format('svg');
+}
+$pancetta: PancettaPro, Arial, Helvetica, sans-serif;
+
+@font-face {
+	font-family: 'CynthoPro';
+	src: 	url('../fonts/CynthoPro-Regular-webfont.woff2') format('woff2'),
+			url('../fonts/CynthoPro-Regular-webfont.woff') format('woff');
+}
